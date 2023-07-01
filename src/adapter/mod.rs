@@ -1,8 +1,9 @@
 mod adapter;
-mod vertex;
+mod edges;
 mod entrypoints;
 mod properties;
-mod edges;
+mod reactions;
+mod vertex;
 
 pub use adapter::Adapter;
 pub use vertex::Vertex;

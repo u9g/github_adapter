@@ -8,9 +8,9 @@ pub(super) fn repository<'a>(
     _resolve_info: &ResolveInfo,
 ) -> VertexIterator<'a, Vertex> {
     Box::new(std::iter::once(Vertex::Repository {
-        owner: owner.to_string(),
+        owner: owner.into(),
         name: name
-            .map(|s| s.to_string())
+            .map(|s| s.into())
             .expect("can't handle nullable names yet"),
     }))
 }

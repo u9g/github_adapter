@@ -1,3 +1,4 @@
+#![feature(once_cell)]
 use std::{collections::BTreeMap, fs, sync::Arc};
 
 use adapter::Adapter;
@@ -7,8 +8,10 @@ mod adapter;
 
 fn main() {
     let schema = Schema::parse(
-        fs::read_to_string("/home/u9g/code/6-30-23/github_adapter/src/adapter/schema.graphql")
-            .unwrap(),
+        fs::read_to_string(
+            r#"C:\Users\jason\Documents\git-proj\github_adapter\src\adapter\schema.graphql"#,
+        )
+        .unwrap(),
     )
     .unwrap();
 

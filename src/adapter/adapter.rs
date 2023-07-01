@@ -1,10 +1,18 @@
 use std::sync::{Arc, OnceLock};
 
-use trustfall::{FieldValue, Schema, provider::{ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, ResolveInfo, VertexIterator, resolve_coercion_using_schema}};
+use tokio::runtime::Runtime;
+use trustfall::{
+    provider::{
+        resolve_coercion_using_schema, ContextIterator, ContextOutcomeIterator, EdgeParameters,
+        ResolveEdgeInfo, ResolveInfo, VertexIterator,
+    },
+    FieldValue, Schema,
+};
 
 use super::vertex::Vertex;
 
 static SCHEMA: OnceLock<Schema> = OnceLock::new();
+static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct Adapter {}
@@ -13,11 +21,12 @@ impl Adapter {
     pub const SCHEMA_TEXT: &'static str = include_str!("./schema.graphql");
 
     pub fn schema() -> &'static Schema {
-        SCHEMA
-            .get_or_init(|| {
-                Schema::parse(Self::SCHEMA_TEXT).expect("not a valid schema")
-            })
+        SCHEMA.get_or_init(|| Schema::parse(Self::SCHEMA_TEXT).expect("not a valid schema"))
     }
+}
+
+pub fn runtime() -> &'static Runtime {
+    RUNTIME.get_or_init(|| Runtime::new().expect("not able to create a runtime"))
 }
 
 impl<'a> trustfall::provider::Adapter<'a> for Adapter {
@@ -64,62 +73,46 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
         match type_name.as_ref() {
-            "Account" => {
-                super::properties::resolve_account_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Comment" => {
-                super::properties::resolve_comment_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Issue" => {
-                super::properties::resolve_issue_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Label" => {
-                super::properties::resolve_label_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Organization" => {
-                super::properties::resolve_organization_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Reactions" => {
-                super::properties::resolve_reactions_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "Repository" => {
-                super::properties::resolve_repository_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
-            "User" => {
-                super::properties::resolve_user_property(
-                    contexts,
-                    property_name.as_ref(),
-                    resolve_info,
-                )
-            }
+            "Account" => super::properties::resolve_account_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Comment" => super::properties::resolve_comment_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Issue" => super::properties::resolve_issue_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Label" => super::properties::resolve_label_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Organization" => super::properties::resolve_organization_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Reactions" => super::properties::resolve_reactions_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "Repository" => super::properties::resolve_repository_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
+            "User" => super::properties::resolve_user_property(
+                contexts,
+                property_name.as_ref(),
+                resolve_info,
+            ),
             _ => {
                 unreachable!(
                     "attempted to read property '{property_name}' on unexpected type: {type_name}"
@@ -137,30 +130,26 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
         match type_name.as_ref() {
-            "Comment" => {
-                super::edges::resolve_comment_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
-                )
-            }
-            "Issue" => {
-                super::edges::resolve_issue_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
-                )
-            }
-            "Repository" => {
-                super::edges::resolve_repository_edge(
-                    contexts,
-                    edge_name.as_ref(),
-                    parameters,
-                    resolve_info,
-                )
-            }
+            "Comment" => super::edges::resolve_comment_edge(
+                contexts,
+                edge_name.as_ref(),
+                parameters,
+                resolve_info,
+            ),
+            "Issue" => super::edges::resolve_issue_edge(
+                contexts,
+                edge_name.as_ref(),
+                parameters,
+                resolve_info,
+                runtime(),
+            ),
+            "Repository" => super::edges::resolve_repository_edge(
+                contexts,
+                edge_name.as_ref(),
+                parameters,
+                resolve_info,
+                runtime(),
+            ),
             _ => {
                 unreachable!(
                     "attempted to resolve edge '{edge_name}' on unexpected type: {type_name}"

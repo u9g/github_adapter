@@ -1,8 +1,6 @@
 use octocrab::models::issues::IssueStateReason;
 use trustfall::{
-    provider::{
-        field_property, resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo,
-    },
+    provider::{resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo},
     FieldValue,
 };
 
@@ -131,9 +129,9 @@ pub(super) fn resolve_reactions_property<'a>(
         "rocket" => {
             todo!("implement property 'rocket' in fn `resolve_reactions_property()`")
         }
-        "total" => {
-            todo!("implement property 'total' in fn `resolve_reactions_property()`")
-        }
+        "total" => resolve_property_with(contexts, |v| {
+            v.as_reactions().expect("to have a reaction").total.into()
+        }),
         _ => {
             unreachable!(
                 "attempted to read unexpected property '{property_name}' on type 'Reactions'"

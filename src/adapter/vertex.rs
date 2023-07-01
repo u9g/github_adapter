@@ -1,20 +1,24 @@
-use octocrab::models::{issues::Issue, reactions::Reaction, Label};
+use std::rc::Rc;
+
+use octocrab::models::{issues::Issue, Label};
+
+use super::reactions::Reactions;
 
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
     Account(()),
     Comment(()),
     Issue {
-        issue: Issue,
-        repo_owner: String,
-        repo_name: String,
+        issue: Box<Issue>,
+        repo_owner: Rc<str>,
+        repo_name: Rc<str>,
     },
     Label(Label),
     Organization(()),
-    Reactions(Reaction),
+    Reactions(Reactions),
     Repository {
-        owner: String,
-        name: String,
+        owner: Rc<str>,
+        name: Rc<str>,
     },
     User(()),
 }

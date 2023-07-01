@@ -1,3 +1,4 @@
+use tokio::runtime::Runtime;
 use trustfall::provider::{
     ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, VertexIterator,
 };
@@ -46,12 +47,13 @@ pub(super) fn resolve_issue_edge<'a>(
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
+    runtime: &'static Runtime,
 ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
     match edge_name {
         "comment" => issue::comment(contexts, resolve_info),
         "label" => issue::label(contexts, resolve_info),
         "opened_by" => issue::opened_by(contexts, resolve_info),
-        "reactions" => issue::reactions(contexts, resolve_info),
+        "reactions" => issue::reactions(contexts, resolve_info, &runtime),
         _ => {
             unreachable!("attempted to resolve unexpected edge '{edge_name}' on type 'Issue'")
         }
@@ -59,13 +61,14 @@ pub(super) fn resolve_issue_edge<'a>(
 }
 
 mod issue {
-    use std::rc::Rc;
 
-    use futures::executor;
+    use tokio::runtime::Runtime;
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         VertexIterator,
     };
+
+    use crate::adapter::reactions::Reactions;
 
     use super::super::vertex::Vertex;
 
@@ -103,21 +106,19 @@ mod issue {
     pub(super) fn reactions<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
+        runtime: &'static Runtime,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        resolve_neighbors_with(contexts, |v| {
+        resolve_neighbors_with(contexts, move |v| {
             let issue_vertex = v.as_issue().expect("to have a issue vertex");
-            let issue = octocrab::instance().issues(issue_vertex.1, issue_vertex.2);
-            Box::new(
-                executor::block_on(
-                    issue
-                        .list_reactions(issue_vertex.0.id.0)
-                        .per_page(100)
-                        .send(),
-                )
-                .expect("expect to be able to get reactions")
-                .into_iter()
-                .map(Vertex::Reactions),
-            )
+
+            let reactions = Reactions::new(
+                issue_vertex.1.clone(),
+                issue_vertex.2.clone(),
+                issue_vertex.0.id,
+                &runtime,
+            );
+
+            Box::new(std::iter::once(Vertex::Reactions(reactions)))
         })
     }
 }
@@ -127,9 +128,10 @@ pub(super) fn resolve_repository_edge<'a>(
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
+    runtime: &'static Runtime,
 ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
     match edge_name {
-        "issue" => repository::issue(contexts, resolve_info),
+        "issue" => repository::issue(contexts, resolve_info, &runtime),
         "owner" => repository::owner(contexts, resolve_info),
         _ => {
             unreachable!("attempted to resolve unexpected edge '{edge_name}' on type 'Repository'")
@@ -138,7 +140,7 @@ pub(super) fn resolve_repository_edge<'a>(
 }
 
 mod repository {
-    use futures::executor;
+    use tokio::runtime::Runtime;
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         VertexIterator,
@@ -149,25 +151,26 @@ mod repository {
     pub(super) fn issue<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
+        runtime: &'static Runtime,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(contexts, |v| {
             if let Vertex::Repository { owner, name } = v {
-                Box::new(
-                    executor::block_on(
+                let owner = owner.clone();
+                let name = name.clone();
+                let issues = runtime
+                    .block_on(
                         octocrab::instance()
                             .issues(owner.to_string(), name.to_string())
                             .list()
                             .per_page(100)
                             .send(),
                     )
-                    .expect("to find issues")
-                    .into_iter()
-                    .map(|v| Vertex::Issue {
-                        issue: v,
-                        repo_owner: owner.to_string(),
-                        repo_name: name.to_string(),
-                    }),
-                )
+                    .expect("to be able to find issues");
+                Box::new(issues.into_iter().map(move |issue| Vertex::Issue {
+                    issue: Box::new(issue),
+                    repo_owner: owner.clone(),
+                    repo_name: name.clone(),
+                }))
             } else {
                 unreachable!("attempted to resolve edge 'issue' on non-vertex 'Repository'")
             }
