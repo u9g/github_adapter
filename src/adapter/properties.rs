@@ -44,9 +44,22 @@ pub(super) fn resolve_issue_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "description" => {
-            todo!("implement property 'description' in fn `resolve_issue_property()`")
-        }
+        "name" => resolve_property_with(contexts, |v| {
+            v.as_issue()
+                .expect("to have an issue")
+                .0
+                .title
+                .to_string()
+                .into()
+        }),
+        "description" => resolve_property_with(contexts, |v| {
+            v.as_issue()
+                .expect("to have an issue")
+                .0
+                .body
+                .as_ref()
+                .map_or_else(|| FieldValue::Null, Into::into)
+        }),
         "state" => resolve_property_with(contexts, |v| {
             let issue_vertex = v.as_issue().unwrap();
 
@@ -59,7 +72,7 @@ pub(super) fn resolve_issue_property<'a>(
                 },
                 None => match issue_vertex.0.state {
                     octocrab::models::IssueState::Closed => "closed",
-                    octocrab::models::IssueState::Open => "opened",
+                    octocrab::models::IssueState::Open => "open",
                     _ => unreachable!(),
                 },
             }

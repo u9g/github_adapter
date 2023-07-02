@@ -47,13 +47,12 @@ pub(super) fn resolve_issue_edge<'a>(
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-    runtime: &'static Runtime,
 ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
     match edge_name {
         "comment" => issue::comment(contexts, resolve_info),
         "label" => issue::label(contexts, resolve_info),
         "opened_by" => issue::opened_by(contexts, resolve_info),
-        "reactions" => issue::reactions(contexts, resolve_info, &runtime),
+        "reactions" => issue::reactions(contexts, resolve_info),
         _ => {
             unreachable!("attempted to resolve unexpected edge '{edge_name}' on type 'Issue'")
         }
@@ -65,7 +64,7 @@ mod issue {
     use tokio::runtime::Runtime;
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexIterator,
+        VertexInfo, VertexIterator,
     };
 
     use crate::adapter::reactions::Reactions;
@@ -106,7 +105,6 @@ mod issue {
     pub(super) fn reactions<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
-        runtime: &'static Runtime,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(contexts, move |v| {
             let issue_vertex = v.as_issue().expect("to have a issue vertex");
@@ -114,8 +112,7 @@ mod issue {
             let reactions = Reactions::new(
                 issue_vertex.1.clone(),
                 issue_vertex.2.clone(),
-                issue_vertex.0.id,
-                &runtime,
+                issue_vertex.0.number,
             );
 
             Box::new(std::iter::once(Vertex::Reactions(reactions)))
@@ -128,10 +125,9 @@ pub(super) fn resolve_repository_edge<'a>(
     edge_name: &str,
     parameters: &EdgeParameters,
     resolve_info: &ResolveEdgeInfo,
-    runtime: &'static Runtime,
 ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
     match edge_name {
-        "issue" => repository::issue(contexts, resolve_info, &runtime),
+        "issue" => repository::issue(contexts, resolve_info),
         "owner" => repository::owner(contexts, resolve_info),
         _ => {
             unreachable!("attempted to resolve unexpected edge '{edge_name}' on type 'Repository'")
@@ -146,27 +142,20 @@ mod repository {
         VertexIterator,
     };
 
+    use crate::adapter::issue_iterator::IssueIterator;
+
     use super::super::vertex::Vertex;
 
     pub(super) fn issue<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
-        runtime: &'static Runtime,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(contexts, |v| {
             if let Vertex::Repository { owner, name } = v {
                 let owner = owner.clone();
                 let name = name.clone();
-                let issues = runtime
-                    .block_on(
-                        octocrab::instance()
-                            .issues(owner.to_string(), name.to_string())
-                            .list()
-                            .per_page(100)
-                            .send(),
-                    )
-                    .expect("to be able to find issues");
-                Box::new(issues.into_iter().map(move |issue| Vertex::Issue {
+                let x = IssueIterator::new(owner.clone(), name.clone());
+                Box::new(x.into_iter().map(move |issue| Vertex::Issue {
                     issue: Box::new(issue),
                     repo_owner: owner.clone(),
                     repo_name: name.clone(),

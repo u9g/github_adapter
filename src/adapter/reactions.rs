@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use octocrab::models::IssueId;
 
-use tokio::runtime::Runtime;
+use super::adapter::{octocrab, runtime};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Reactions {
@@ -15,43 +15,50 @@ pub struct Reactions {
     pub rocket: u32,
     pub eyes: u32,
 
-    pub total: u32,
+    pub total: u64,
 }
 
 impl Reactions {
-    pub fn new(
-        repo_owner: Rc<str>,
-        repo_name: Rc<str>,
-        issue_id: IssueId,
-        runtime: &Runtime,
-    ) -> Self {
-        let instance = octocrab::instance();
+    pub fn new(repo_owner: Rc<str>, repo_name: Rc<str>, issue_number: u64) -> Self {
+        let instant = std::time::Instant::now();
+        let _enter = runtime().enter();
+        let instance = octocrab();
         let issue = instance.issues(repo_owner.to_string(), repo_name.to_string());
 
         let mut issue_reactions = vec![];
 
-        let last_reactions = runtime
-            .block_on(issue.list_reactions(issue_id.0).per_page(100).send())
-            .expect("expect to be able to get reactions");
+        let last_reactions = runtime()
+            .block_on(issue.list_reactions(issue_number).per_page(100).send())
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expect to be able to get reactions for {}'s repo: {} for issue: {}",
+                    &repo_owner.to_string().as_str(),
+                    &repo_name.to_string().as_str(),
+                    issue_number
+                )
+            });
 
         last_reactions
             .items
             .iter()
             .for_each(|reaction| issue_reactions.push(reaction.content.clone()));
 
-        for i in 2..last_reactions.number_of_pages().expect("to get # of pages") {
-            runtime
-                .block_on(
-                    issue
-                        .list_reactions(issue_id.0)
-                        .per_page(100)
-                        .page(i)
-                        .send(),
-                )
-                .expect("expect to be able to get reactions")
-                .items
-                .iter()
-                .for_each(|reaction| issue_reactions.push(reaction.content.clone()));
+        if let Some(number_of_pages) = last_reactions.number_of_pages() {
+            // only exists if >1 pages
+            for i in 2..number_of_pages {
+                runtime()
+                    .block_on(
+                        issue
+                            .list_reactions(issue_number)
+                            .per_page(100)
+                            .page(i)
+                            .send(),
+                    )
+                    .expect("expect to be able to get reactions")
+                    .items
+                    .iter()
+                    .for_each(|reaction| issue_reactions.push(reaction.content.clone()));
+            }
         }
 
         let mut reactions = Self {
@@ -79,7 +86,7 @@ impl Reactions {
             }
             reactions.total += 1;
         }
-
+        println!("finish: {:?}", instant.elapsed());
         reactions
     }
 }

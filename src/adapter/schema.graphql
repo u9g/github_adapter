@@ -83,7 +83,8 @@ type Label {
 }
 
 type Issue {
-  description: String!
+  name: String!
+  description: String
   state: String!
 
   opened_by: Account!

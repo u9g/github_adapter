@@ -1,5 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
+use octocrab::{Octocrab, OctocrabBuilder};
 use tokio::runtime::Runtime;
 use trustfall::{
     provider::{
@@ -27,6 +28,15 @@ impl Adapter {
 
 pub fn runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| Runtime::new().expect("not able to create a runtime"))
+}
+
+pub fn octocrab() -> Arc<Octocrab> {
+    octocrab::initialise(
+        OctocrabBuilder::default()
+            .personal_token(std::env::var("GITHUB_TOKEN").expect("$env.'GITHUB_TOKEN' to be valid"))
+            .build()
+            .expect("to be able to build octocrab builder"),
+    )
 }
 
 impl<'a> trustfall::provider::Adapter<'a> for Adapter {
@@ -72,6 +82,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         property_name: &Arc<str>,
         resolve_info: &ResolveInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, FieldValue> {
+        println!("\t{}.{}", type_name, property_name);
         match type_name.as_ref() {
             "Account" => super::properties::resolve_account_property(
                 contexts,
@@ -129,6 +140,7 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
         parameters: &EdgeParameters,
         resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Self::Vertex, VertexIterator<'a, Self::Vertex>> {
+        println!("\t{}.{}", type_name, edge_name);
         match type_name.as_ref() {
             "Comment" => super::edges::resolve_comment_edge(
                 contexts,
@@ -141,14 +153,12 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                 edge_name.as_ref(),
                 parameters,
                 resolve_info,
-                runtime(),
             ),
             "Repository" => super::edges::resolve_repository_edge(
                 contexts,
                 edge_name.as_ref(),
                 parameters,
                 resolve_info,
-                runtime(),
             ),
             _ => {
                 unreachable!(

@@ -2,6 +2,7 @@
 use std::{collections::BTreeMap, fs, sync::Arc};
 
 use adapter::Adapter;
+
 use trustfall::{execute_query, Schema, TransparentValue};
 
 mod adapter;
@@ -19,10 +20,12 @@ fn main() {
     query {
         Repository(owner: "ziglang", name: "zig") {
             issue {
+                name @output
+
                 state @filter(op: "=", value: ["$open"])
 
                 label {
-                    name @filter(op: "=", value: ["$feature_request"])
+                    name @filter(op: "=", value: ["$accepted"])
                 }
 
                 reactions {
@@ -36,8 +39,8 @@ fn main() {
     let mut args: BTreeMap<Arc<str>, TransparentValue> = BTreeMap::new();
 
     args.insert(
-        "feature_request".into(),
-        TransparentValue::String("feature_request".to_owned()),
+        "accepted".into(),
+        TransparentValue::String("accepted".to_owned()),
     );
     args.insert("fifty".into(), TransparentValue::Int64(50));
     args.insert("open".into(), TransparentValue::String("open".to_owned()));
@@ -46,7 +49,7 @@ fn main() {
 
     for data_item in execute_query(&schema, adapter, query, args)
         .expect("not a legal query")
-        .take(usize::MAX)
+        .take(1)
     {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.
