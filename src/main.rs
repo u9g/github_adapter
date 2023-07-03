@@ -8,10 +8,7 @@ mod adapter;
 
 fn main() {
     let schema = Schema::parse(
-        fs::read_to_string(
-            r#"/workspace/github_adapter/src/schema.graphql"#,
-        )
-        .unwrap(),
+        fs::read_to_string(r#"/workspace/github_adapter/src/schema.graphql"#).unwrap(),
     )
     .unwrap();
 

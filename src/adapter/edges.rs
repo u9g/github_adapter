@@ -154,9 +154,7 @@ mod repository {
         VertexIterator,
     };
 
-    use crate::adapter::{
-        generic_iterator::GenericIterator, util::client,
-    };
+    use crate::adapter::{generic_iterator::GenericIterator, util::client};
 
     use super::super::vertex::Vertex;
 
@@ -165,7 +163,9 @@ mod repository {
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(contexts, |v| {
-            let Vertex::Repository { owner, name } = v else {unreachable!("Need a repository in Repository.issue")};
+            let Vertex::Repository { owner, name } = v else {
+                unreachable!("Need a repository in Repository.issue")
+            };
             let owner = owner.clone();
             let name = name.clone();
             let owner2 = owner.clone();
