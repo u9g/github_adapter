@@ -9,7 +9,7 @@ mod adapter;
 fn main() {
     let schema = Schema::parse(
         fs::read_to_string(
-            r#"C:\Users\jason\Documents\git-proj\github_adapter\src\adapter\schema.graphql"#,
+            r#"/workspace/github_adapter/src/schema.graphql"#,
         )
         .unwrap(),
     )

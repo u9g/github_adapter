@@ -1,10 +1,10 @@
-use std::array::IntoIter;
+use std::vec::IntoIter;
 
 pub struct GenericIterator<T, F>
 where
     F: Fn(i64) -> Vec<T>,
 {
-    current_page_iter: IntoIter<T, 1>,
+    current_page_iter: IntoIter<T>,
     item_ix_in_page: usize,
     current_page_ix: i64,
     max_page_ix: i64,
@@ -28,7 +28,7 @@ where
 
     fn increment_page_and_get_next_page(&mut self) {
         self.current_page_ix += 1;
-        self.current_page = (self.getter)(self.current_page_ix).into_iter()
+        self.current_page_iter = (self.getter)(self.current_page_ix).into_iter()
     }
 }
 
@@ -39,12 +39,9 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.item_ix_in_page < self.current_page.len() {
-            self.item_ix_in_page += 1;
-            Some(self.current_page[self.item_ix_in_page - 1])
-        } else if self.current_page_ix < self.max_page_ix
-            && self.item_ix_in_page == self.current_page.len()
-        {
+        if let Some(next) = self.current_page_iter.next() {
+            Some(next)
+        } else if self.current_page_ix < self.max_page_ix {
             self.increment_page_and_get_next_page();
             self.item_ix_in_page = 0;
             self.next()

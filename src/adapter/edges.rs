@@ -168,7 +168,9 @@ mod repository {
             let Vertex::Repository { owner, name } = v else {unreachable!("Need a repository in Repository.issue")};
             let owner = owner.clone();
             let name = name.clone();
-            let iter = GenericIterator::new(Box::new(|page| {
+            let owner2 = owner.clone();
+            let name2 = name.clone();
+            let iter = GenericIterator::new(Box::new(move |page| {
                 task::block_on(client().issues().list_for_repo(
                     &owner,
                     &name,
@@ -193,8 +195,8 @@ mod repository {
                         Vertex::Issue(crate::adapter::vertex::IssueVertex {
                             simple_issue: Box::new(issue),
                             full_issue: RefCell::new(None).into(),
-                            owner: owner.clone(),
-                            name: name.clone(),
+                            owner: owner2.clone(),
+                            name: name2.clone(),
                         })
                     }),
             )
