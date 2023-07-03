@@ -1,8 +1,6 @@
 use async_std::task;
 use trustfall::{
-    provider::{
-        field_property, resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo,
-    },
+    provider::{resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo},
     FieldValue,
 };
 
