@@ -1,7 +1,6 @@
-use async_std::task;
 use trustfall::provider::{ResolveInfo, VertexIterator};
 
-use super::{util::client, vertex::Vertex};
+use super::vertex::{RepositoryVertex, Vertex};
 
 pub(super) fn repository<'a>(
     owner: &str,
@@ -9,10 +8,11 @@ pub(super) fn repository<'a>(
     _resolve_info: &ResolveInfo,
 ) -> VertexIterator<'a, Vertex> {
     if let Some(repo_name) = name {
-        Box::new(std::iter::once(Vertex::Repository {
+        Box::new(std::iter::once(Vertex::Repository(RepositoryVertex {
             owner: owner.into(),
             name: repo_name.into(),
-        }))
+            repo_data: Default::default(),
+        })))
     } else {
         Box::new(std::iter::empty())
         // task::block_on(client().repos().list_all_for_user(

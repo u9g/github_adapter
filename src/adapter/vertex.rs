@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use octorust::types::{Issue, IssueSimple, Label, ReactionRollup};
+use octorust::types::{FullRepository, Issue, IssueSimple, Label, ReactionRollup};
 
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
@@ -10,8 +10,15 @@ pub enum Vertex {
     Label(Label),
     Organization(()),
     Reactions(Option<ReactionRollup>),
-    Repository { owner: Rc<str>, name: Rc<str> },
+    Repository(RepositoryVertex),
     User(()),
+}
+
+#[derive(Debug, Clone)]
+pub struct RepositoryVertex {
+    pub owner: Rc<str>,
+    pub name: Rc<str>,
+    pub repo_data: Box<RefCell<Option<FullRepository>>>,
 }
 
 #[derive(Debug, Clone)]
