@@ -85,9 +85,6 @@ type Label {
 type Issue {
   name: String!
   description: String
-  """
-  one of: open, closed, all
-  """
   state: String!
 
   opened_by: Account!

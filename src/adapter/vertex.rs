@@ -1,24 +1,24 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
-use octocrab::models::{issues::Issue, Label};
-
-use super::reactions::Reactions;
+use octorust::types::{Issue, IssueSimple, Label, ReactionRollup};
 
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
     Account(()),
     Comment(()),
-    Issue {
-        issue: Box<Issue>,
-        repo_owner: Rc<str>,
-        repo_name: Rc<str>,
-    },
+    Issue(IssueVertex),
     Label(Label),
     Organization(()),
-    Reactions(Reactions),
-    Repository {
-        owner: Rc<str>,
-        name: Rc<str>,
-    },
+    Reactions(Option<ReactionRollup>),
+    Repository { owner: Rc<str>, name: Rc<str> },
     User(()),
+}
+
+#[derive(Debug, Clone)]
+pub struct IssueVertex {
+    pub simple_issue: Box<IssueSimple>,
+    /// only gotten/used for reactions
+    pub full_issue: Box<RefCell<Option<Issue>>>,
+    pub owner: Rc<str>,
+    pub name: Rc<str>,
 }

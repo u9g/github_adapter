@@ -1,5 +1,4 @@
-#![feature(once_cell)]
-use std::{collections::BTreeMap, fs, sync::Arc};
+use std::{collections::BTreeMap, env, fs, sync::Arc};
 
 use adapter::Adapter;
 
@@ -49,7 +48,12 @@ fn main() {
 
     for data_item in execute_query(&schema, adapter, query, args)
         .expect("not a legal query")
-        .take(1)
+        .take(
+            env::var("TAKE_COUNT")
+                .unwrap_or("1".to_owned())
+                .parse()
+                .expect("to be able to parse env['TAKE_COUNT']"),
+        )
     {
         // The default `FieldValue` JSON representation is explicit about its type, so we can get
         // reliable round-trip serialization of types tricky in JSON like integers and floats.

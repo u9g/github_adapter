@@ -1,9 +1,10 @@
 mod adapter;
 mod edges;
 mod entrypoints;
+mod generic_iterator;
 mod issue_iterator;
 mod properties;
-mod reactions;
+mod util;
 mod vertex;
 
 pub use adapter::Adapter;

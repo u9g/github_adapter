@@ -1,6 +1,7 @@
-use octocrab::models::issues::IssueStateReason;
 use trustfall::{
-    provider::{resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo},
+    provider::{
+        field_property, resolve_property_with, ContextIterator, ContextOutcomeIterator, ResolveInfo,
+    },
     FieldValue,
 };
 
@@ -44,39 +45,24 @@ pub(super) fn resolve_issue_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
+        "description" => {
+            todo!("implement property 'description' in fn `resolve_issue_property()`")
+        }
         "name" => resolve_property_with(contexts, |v| {
             v.as_issue()
                 .expect("to have an issue")
-                .0
+                .simple_issue
                 .title
                 .to_string()
                 .into()
         }),
-        "description" => resolve_property_with(contexts, |v| {
+        "state" => resolve_property_with(contexts, |v| {
             v.as_issue()
                 .expect("to have an issue")
-                .0
-                .body
-                .as_ref()
-                .map_or_else(|| FieldValue::Null, Into::into)
-        }),
-        "state" => resolve_property_with(contexts, |v| {
-            let issue_vertex = v.as_issue().unwrap();
-
-            match &issue_vertex.0.state_reason {
-                Some(reason) => match reason {
-                    IssueStateReason::Completed => "closed:completed",
-                    IssueStateReason::NotPlanned => "closed:not_planned",
-                    IssueStateReason::Reopened => "opened:reopened",
-                    _ => unreachable!(),
-                },
-                None => match issue_vertex.0.state {
-                    octocrab::models::IssueState::Closed => "closed",
-                    octocrab::models::IssueState::Open => "open",
-                    _ => unreachable!(),
-                },
-            }
-            .into()
+                .simple_issue
+                .state
+                .to_string()
+                .into()
         }),
         _ => {
             unreachable!("attempted to read unexpected property '{property_name}' on type 'Issue'")
@@ -90,7 +76,9 @@ pub(super) fn resolve_label_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "name" => resolve_property_with(contexts, |v| v.as_label().unwrap().name.clone().into()),
+        "name" => {
+            resolve_property_with(contexts, |v| v.as_label().unwrap().name.to_string().into())
+        }
         _ => {
             unreachable!("attempted to read unexpected property '{property_name}' on type 'Label'")
         }
@@ -143,7 +131,11 @@ pub(super) fn resolve_reactions_property<'a>(
             todo!("implement property 'rocket' in fn `resolve_reactions_property()`")
         }
         "total" => resolve_property_with(contexts, |v| {
-            v.as_reactions().expect("to have a reaction").total.into()
+            v.as_reactions()
+                .unwrap()
+                .as_ref()
+                .map_or_else(|| 0, |reactions| reactions.total_count)
+                .into()
         }),
         _ => {
             unreachable!(

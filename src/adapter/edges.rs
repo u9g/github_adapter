@@ -1,4 +1,3 @@
-use tokio::runtime::Runtime;
 use trustfall::provider::{
     ContextIterator, ContextOutcomeIterator, EdgeParameters, ResolveEdgeInfo, VertexIterator,
 };
@@ -60,14 +59,13 @@ pub(super) fn resolve_issue_edge<'a>(
 }
 
 mod issue {
-
-    use tokio::runtime::Runtime;
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
-        VertexInfo, VertexIterator,
+        VertexIterator,
     };
 
-    use crate::adapter::reactions::Reactions;
+    use crate::adapter::util::client;
+    use async_std::task;
 
     use super::super::vertex::Vertex;
 
@@ -85,8 +83,8 @@ mod issue {
         resolve_neighbors_with(contexts, |v| {
             Box::new(
                 v.as_issue()
-                    .unwrap()
-                    .0
+                    .expect("to have an issue")
+                    .simple_issue
                     .labels
                     .clone()
                     .into_iter()
@@ -106,16 +104,28 @@ mod issue {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        resolve_neighbors_with(contexts, move |v| {
-            let issue_vertex = v.as_issue().expect("to have a issue vertex");
+        resolve_neighbors_with(contexts, |v| {
+            let issue = v.as_issue().expect("to have an issue");
 
-            let reactions = Reactions::new(
-                issue_vertex.1.clone(),
-                issue_vertex.2.clone(),
-                issue_vertex.0.number,
-            );
+            if issue.full_issue.borrow().is_none() {
+                let issue_data = task::block_on(client().issues().get(
+                    &issue.owner,
+                    &issue.name,
+                    issue.simple_issue.number,
+                ))
+                .expect("to be able to get issue info from repo");
+                issue.full_issue.replace(Some(issue_data));
+            }
 
-            Box::new(std::iter::once(Vertex::Reactions(reactions)))
+            let maybe_reactions = issue
+                .full_issue
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .reactions
+                .clone();
+
+            Box::new(std::iter::once(Vertex::Reactions(maybe_reactions)))
         })
     }
 }
@@ -136,13 +146,17 @@ pub(super) fn resolve_repository_edge<'a>(
 }
 
 mod repository {
-    use tokio::runtime::Runtime;
+    use async_std::task;
+    use std::cell::RefCell;
+
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         VertexIterator,
     };
 
-    use crate::adapter::issue_iterator::IssueIterator;
+    use crate::adapter::{
+        generic_iterator::GenericIterator, util::client,
+    };
 
     use super::super::vertex::Vertex;
 
@@ -151,18 +165,39 @@ mod repository {
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
         resolve_neighbors_with(contexts, |v| {
-            if let Vertex::Repository { owner, name } = v {
-                let owner = owner.clone();
-                let name = name.clone();
-                let x = IssueIterator::new(owner.clone(), name.clone());
-                Box::new(x.into_iter().map(move |issue| Vertex::Issue {
-                    issue: Box::new(issue),
-                    repo_owner: owner.clone(),
-                    repo_name: name.clone(),
-                }))
-            } else {
-                unreachable!("attempted to resolve edge 'issue' on non-vertex 'Repository'")
-            }
+            let Vertex::Repository { owner, name } = v else {unreachable!("Need a repository in Repository.issue")};
+            let owner = owner.clone();
+            let name = name.clone();
+            let iter = GenericIterator::new(Box::new(|page| {
+                task::block_on(client().issues().list_for_repo(
+                    &owner,
+                    &name,
+                    "",
+                    octorust::types::IssuesListState::All,
+                    "",
+                    "",
+                    "",
+                    "",
+                    octorust::types::IssuesListSort::Updated,
+                    octorust::types::Order::Desc,
+                    None,
+                    100,
+                    page,
+                ))
+                .expect("to get page of issues")
+            }));
+            Box::new(
+                iter.into_iter()
+                    .filter(|issue| issue.pull_request.is_none())
+                    .map(move |issue| {
+                        Vertex::Issue(crate::adapter::vertex::IssueVertex {
+                            simple_issue: Box::new(issue),
+                            full_issue: RefCell::new(None).into(),
+                            owner: owner.clone(),
+                            name: name.clone(),
+                        })
+                    }),
+            )
         })
     }
 
