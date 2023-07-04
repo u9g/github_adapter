@@ -4,14 +4,17 @@ use octorust::types::{FullRepository, Issue, IssueComment, IssueSimple, Label, R
 
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
-    Account(()),
+    Account(AccountVertex),
     Comment(Box<IssueComment>),
     Issue(IssueVertex),
     Label(Label),
-    Organization(()),
     Reactions(Option<ReactionRollup>),
     Repository(RepositoryVertex),
-    User(()),
+}
+
+#[derive(Debug, Clone)]
+pub struct AccountVertex {
+    pub name: Rc<str>,
 }
 
 #[derive(Debug, Clone)]

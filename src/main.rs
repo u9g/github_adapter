@@ -14,18 +14,34 @@ fn main() {
 
     let query = r#"
     query {
-        Repository(owner: "ziglang", name: "zig") {
+        Repository(owner: "ziglang") {
+            owner {
+                name @tag(name: "repo_owner")
+            }
+
             issue {
+                opened_by {
+                    issue_opener_name: name @filter(op: "!=", value: ["%repo_owner"]) @tag
+                }
+
                 name @output
 
                 state @filter(op: "=", value: ["$open"])
 
-                label {
-                    name @filter(op: "=", value: ["$accepted"])
+                reactions {
+                    total @filter(op: ">=", value: ["$ten"])
                 }
 
-                reactions {
-                    total @filter(op: ">=", value: ["$fifty"])
+                comment {
+                    by {
+                        name @filter(op: "=", value: ["%issue_opener_name"])
+                    }
+
+                    message @output
+
+                    reactions {
+                        plus_one @filter(op: ">=", value: ["$ten"])
+                    }   
                 }
             }
         }
@@ -34,11 +50,7 @@ fn main() {
 
     let mut args: BTreeMap<Arc<str>, TransparentValue> = BTreeMap::new();
 
-    args.insert(
-        "accepted".into(),
-        TransparentValue::String("accepted".to_owned()),
-    );
-    args.insert("fifty".into(), TransparentValue::Int64(50));
+    args.insert("ten".into(), TransparentValue::Int64(10));
     args.insert("open".into(), TransparentValue::String("open".to_owned()));
 
     let adapter = Arc::new(Adapter {});

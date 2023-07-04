@@ -46,14 +46,6 @@ type RootSchemaQuery {
   Repository(owner: String!, name: String): [Repository!]!
 }
 
-type Organization implements Account {
-  name: String!
-}
-
-type User implements Account {
-  name: String!
-}
-
 interface Account {
   name: String!
 }

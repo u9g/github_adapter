@@ -25,13 +25,27 @@ mod comment {
         VertexIterator,
     };
 
+    use crate::adapter::vertex::AccountVertex;
+
     use super::super::vertex::Vertex;
 
     pub(super) fn by<'a>(
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'by' for type 'Comment'")
+        resolve_neighbors_with(contexts, |v| {
+            Box::new(std::iter::once(Vertex::Account(AccountVertex {
+                name: v
+                    .as_comment()
+                    .expect("to have a comment")
+                    .user
+                    .as_ref()
+                    .expect("comment to have a user who wrote it")
+                    .login
+                    .as_str()
+                    .into(),
+            })))
+        })
     }
 
     pub(super) fn reactions<'a>(
@@ -64,12 +78,18 @@ pub(super) fn resolve_issue_edge<'a>(
 }
 
 mod issue {
+    use std::rc::Rc;
+
     use trustfall::provider::{
         resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
         VertexIterator,
     };
 
-    use crate::adapter::{generic_iterator::GenericIterator, util::client, vertex::IssueVertex};
+    use crate::adapter::{
+        generic_iterator::GenericIterator,
+        util::client,
+        vertex::{AccountVertex, IssueVertex},
+    };
     use async_std::task;
 
     use super::super::vertex::Vertex;
@@ -131,7 +151,20 @@ mod issue {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'opened_by' for type 'Issue'")
+        resolve_neighbors_with(contexts, |v| {
+            Box::new(std::iter::once(Vertex::Account(AccountVertex {
+                name: v
+                    .as_issue()
+                    .expect("to be an issue")
+                    .simple_issue
+                    .user
+                    .as_ref()
+                    .expect("for issue to have a user")
+                    .login
+                    .clone()
+                    .into(),
+            })))
+        })
     }
 
     pub(super) fn reactions<'a>(
@@ -189,7 +222,9 @@ mod repository {
     };
 
     use crate::adapter::{
-        generic_iterator::GenericIterator, util::client, vertex::RepositoryVertex,
+        generic_iterator::GenericIterator,
+        util::client,
+        vertex::{AccountVertex, RepositoryVertex},
     };
 
     use super::super::vertex::Vertex;
@@ -243,6 +278,14 @@ mod repository {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'owner' for type 'Repository'")
+        resolve_neighbors_with(contexts, |v| {
+            Box::new(std::iter::once(Vertex::Account(AccountVertex {
+                name: v
+                    .as_repository()
+                    .expect("to have a repository")
+                    .owner
+                    .clone(),
+            })))
+        })
     }
 }

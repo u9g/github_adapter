@@ -87,22 +87,12 @@ impl<'a> trustfall::provider::Adapter<'a> for Adapter {
                 property_name.as_ref(),
                 resolve_info,
             ),
-            "Organization" => super::properties::resolve_organization_property(
-                contexts,
-                property_name.as_ref(),
-                resolve_info,
-            ),
             "Reactions" => super::properties::resolve_reactions_property(
                 contexts,
                 property_name.as_ref(),
                 resolve_info,
             ),
             "Repository" => super::properties::resolve_repository_property(
-                contexts,
-                property_name.as_ref(),
-                resolve_info,
-            ),
-            "User" => super::properties::resolve_user_property(
                 contexts,
                 property_name.as_ref(),
                 resolve_info,

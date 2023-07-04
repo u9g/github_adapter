@@ -12,7 +12,13 @@ pub(super) fn resolve_account_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "name" => todo!("implement property 'name' in fn `resolve_account_property()`"),
+        "name" => resolve_property_with(contexts, |v| {
+            v.as_account()
+                .expect("to have an account")
+                .name
+                .to_string()
+                .into()
+        }),
         _ => {
             unreachable!(
                 "attempted to read unexpected property '{property_name}' on type 'Account'"
@@ -89,23 +95,6 @@ pub(super) fn resolve_label_property<'a>(
         }
         _ => {
             unreachable!("attempted to read unexpected property '{property_name}' on type 'Label'")
-        }
-    }
-}
-
-pub(super) fn resolve_organization_property<'a>(
-    contexts: ContextIterator<'a, Vertex>,
-    property_name: &str,
-    _resolve_info: &ResolveInfo,
-) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
-    match property_name {
-        "name" => {
-            todo!("implement property 'name' in fn `resolve_organization_property()`")
-        }
-        _ => {
-            unreachable!(
-                "attempted to read unexpected property '{property_name}' on type 'Organization'"
-            )
         }
     }
 }
@@ -216,19 +205,6 @@ pub(super) fn resolve_repository_property<'a>(
             unreachable!(
                 "attempted to read unexpected property '{property_name}' on type 'Repository'"
             )
-        }
-    }
-}
-
-pub(super) fn resolve_user_property<'a>(
-    contexts: ContextIterator<'a, Vertex>,
-    property_name: &str,
-    _resolve_info: &ResolveInfo,
-) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
-    match property_name {
-        "name" => todo!("implement property 'name' in fn `resolve_user_property()`"),
-        _ => {
-            unreachable!("attempted to read unexpected property '{property_name}' on type 'User'")
         }
     }
 }
