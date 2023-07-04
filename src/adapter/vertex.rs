@@ -1,11 +1,11 @@
 use std::{cell::RefCell, rc::Rc};
 
-use octorust::types::{FullRepository, Issue, IssueSimple, Label, ReactionRollup};
+use octorust::types::{FullRepository, Issue, IssueComment, IssueSimple, Label, ReactionRollup};
 
 #[derive(Debug, Clone, trustfall::provider::TrustfallEnumVertex)]
 pub enum Vertex {
     Account(()),
-    Comment(()),
+    Comment(Box<IssueComment>),
     Issue(IssueVertex),
     Label(Label),
     Organization(()),

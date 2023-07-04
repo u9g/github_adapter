@@ -27,9 +27,13 @@ pub(super) fn resolve_comment_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "message" => {
-            todo!("implement property 'message' in fn `resolve_comment_property()`")
-        }
+        "message" => resolve_property_with(contexts, |v| {
+            v.as_comment()
+                .expect("to have a comment")
+                .body
+                .clone()
+                .into()
+        }),
         _ => {
             unreachable!(
                 "attempted to read unexpected property '{property_name}' on type 'Comment'"

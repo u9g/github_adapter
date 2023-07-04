@@ -21,7 +21,8 @@ pub(super) fn resolve_comment_edge<'a>(
 
 mod comment {
     use trustfall::provider::{
-        ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo, VertexIterator,
+        resolve_neighbors_with, ContextIterator, ContextOutcomeIterator, ResolveEdgeInfo,
+        VertexIterator,
     };
 
     use super::super::vertex::Vertex;
@@ -37,7 +38,11 @@ mod comment {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'reactions' for type 'Comment'")
+        resolve_neighbors_with(contexts, |v| {
+            Box::new(std::iter::once(Vertex::Reactions(
+                v.as_comment().expect("to have a comment").reactions.clone(),
+            )))
+        })
     }
 }
 
@@ -64,7 +69,7 @@ mod issue {
         VertexIterator,
     };
 
-    use crate::adapter::util::client;
+    use crate::adapter::{generic_iterator::GenericIterator, util::client, vertex::IssueVertex};
     use async_std::task;
 
     use super::super::vertex::Vertex;
@@ -73,7 +78,36 @@ mod issue {
         contexts: ContextIterator<'a, Vertex>,
         _resolve_info: &ResolveEdgeInfo,
     ) -> ContextOutcomeIterator<'a, Vertex, VertexIterator<'a, Vertex>> {
-        todo!("implement edge 'comment' for type 'Issue'")
+        resolve_neighbors_with(contexts, |v| {
+            let Vertex::Issue(IssueVertex {
+                owner,
+                name,
+                simple_issue,
+                ..
+            }) = v
+            else {
+                unreachable!("expected to have a issue vertex")
+            };
+            let issue_number = simple_issue.number;
+
+            let owner = owner.clone();
+            let name = name.clone();
+            let iter = GenericIterator::new(Box::new(move |page| {
+                task::block_on(client().issues().list_comments(
+                    &owner,
+                    &name,
+                    issue_number,
+                    None,
+                    100,
+                    page,
+                ))
+                .expect("to get page of issues")
+            }));
+            Box::new(
+                iter.into_iter()
+                    .map(move |comment| Vertex::Comment(Box::new(comment))),
+            )
+        })
     }
 
     pub(super) fn label<'a>(
