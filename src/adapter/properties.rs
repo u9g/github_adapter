@@ -48,9 +48,14 @@ pub(super) fn resolve_issue_property<'a>(
     _resolve_info: &ResolveInfo,
 ) -> ContextOutcomeIterator<'a, Vertex, FieldValue> {
     match property_name {
-        "description" => {
-            todo!("implement property 'description' in fn `resolve_issue_property()`")
-        }
+        "description" => resolve_property_with(contexts, |v| {
+            v.as_issue()
+                .expect("to have an issue")
+                .simple_issue
+                .body
+                .to_string()
+                .into()
+        }),
         "name" => resolve_property_with(contexts, |v| {
             v.as_issue()
                 .expect("to have an issue")
