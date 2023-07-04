@@ -1,6 +1,13 @@
+use std::rc::Rc;
+
+use async_std::task;
 use trustfall::provider::{ResolveInfo, VertexIterator};
 
-use super::vertex::{RepositoryVertex, Vertex};
+use super::{
+    generic_iterator::GenericIterator,
+    util::client,
+    vertex::{RepositoryVertex, Vertex},
+};
 
 pub(super) fn repository<'a>(
     owner: &str,
@@ -8,32 +15,31 @@ pub(super) fn repository<'a>(
     _resolve_info: &ResolveInfo,
 ) -> VertexIterator<'a, Vertex> {
     if let Some(repo_name) = name {
-        Box::new(std::iter::once(Vertex::Repository(RepositoryVertex {
-            owner: owner.into(),
-            name: repo_name.into(),
-            repo_data: Default::default(),
-        })))
+        Box::new(std::iter::once(Vertex::Repository(RepositoryVertex::new(
+            owner.into(),
+            repo_name.into(),
+        ))))
     } else {
-        Box::new(std::iter::empty())
-        // task::block_on(client().repos().list_all_for_user(
-        //     &owner,
-        //     &name,
-        //     "",
-        //     octorust::types::IssuesListState::All,
-        //     "",
-        //     "",
-        //     "",
-        //     "",
-        //     octorust::types::IssuesListSort::Updated,
-        //     octorust::types::Order::Desc,
-        //     None,
-        //     100,
-        //     page,
-        // ))
-        // .expect("to get page of issues");
-        // Box::new(std::iter::once(Vertex::Repository {
-        //     owner: owner.into(),
-        //     name: repo_name.into(),
-        // }))
+        let owner_for_repo_iter: Rc<str> = owner.clone().into();
+        let owner_for_returned_iter: Rc<str> = owner_for_repo_iter.clone();
+
+        let iter = GenericIterator::new(Box::new(move |page| {
+            task::block_on(client().repos().list_for_user(
+                &owner_for_repo_iter,
+                octorust::types::ReposListUserType::Owner,
+                octorust::types::ReposListOrgSort::Updated,
+                octorust::types::Order::Desc,
+                100,
+                page,
+            ))
+            .expect("to be able to get page of repos for user/org")
+        }));
+
+        Box::new(iter.map(move |v| {
+            Vertex::Repository(RepositoryVertex::new(
+                owner_for_returned_iter.clone(),
+                v.name.into(),
+            ))
+        }))
     }
 }

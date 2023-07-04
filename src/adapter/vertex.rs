@@ -21,6 +21,16 @@ pub struct RepositoryVertex {
     pub repo_data: Box<RefCell<Option<FullRepository>>>,
 }
 
+impl RepositoryVertex {
+    pub(crate) fn new(owner: Rc<str>, name: Rc<str>) -> Self {
+        Self {
+            owner,
+            name,
+            repo_data: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct IssueVertex {
     pub simple_issue: Box<IssueSimple>,
